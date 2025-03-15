@@ -12,7 +12,7 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-
+//MongoDB Connection String
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.djg6r.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 console.log(process.env.DB_USER);
@@ -32,9 +32,10 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
+    // Database and Collection
     const coffeeCollection = client.db('coffeeDB').collection('coffee')
 
-
+    //GET All Coffees
     app.get('/coffee',async(req,res)=>{
       const cursor = coffeeCollection.find();
       const result= await cursor.toArray();
@@ -42,7 +43,7 @@ async function run() {
     })
 
 
-
+    //POST all coffees
    app.post('/coffee',async (req,res)=>{
     const newCoffee = req.body;
     console.log(newCoffee);
@@ -50,7 +51,7 @@ async function run() {
     res.send(result)
    })
 
-
+   //GET A Single Coffee
    app.get('/coffee/:id',async (req,res)=>{
     const id = req.params.id;
     const query = {_id: new ObjectId(id)};
@@ -58,6 +59,7 @@ async function run() {
     res.send(result)
    })
 
+   //UPDATE Coffee
    app.put('/coffee/:id',async(req,res)=>{
     const id = req.params.id;
     const filter = {_id: new ObjectId(id)};
@@ -79,6 +81,7 @@ async function run() {
    })
 
 
+   //DELETE Coffee
    app.delete('/coffee/:id',async (req,res)=>{
     const id = req.params.id;
     const query = {_id: new ObjectId(id)}
