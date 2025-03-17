@@ -15,6 +15,11 @@ app.use(express.json());
 //MongoDB Connection String
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.djg6r.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
+if (!process.env.DB_USER || !process.env.DB_PASSWORD) {
+  console.error("Missing DB_USER or DB_PASSWORD environment variables");
+  process.exit(1); // Stop execution if env variables are missing
+}
+
 console.log(process.env.DB_USER);
 console.log();
 
