@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { MongoClient, ObjectId, ServerApiVersion } from 'mongodb';
+import { MongoClient, ObjectId, ServerApiVersion } from 'mongodb'
 
 dotenv.config();
 
@@ -12,154 +12,149 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Ensure required environment variables exist
-if (!process.env.DB_USER || !process.env.DB_PASSWORD) {
-  console.error("Missing DB_USER or DB_PASSWORD environment variables");
-  process.exit(1);
-}
-
-// MongoDB Connection (Persistent)
+//MongoDB Connection String
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.djg6r.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
-let client;
-let coffeeCollection;
-let userCollection;
+console.log(process.env.DB_USER);
+console.log();
 
-// Connect to MongoDB once and reuse the connection
-async function connectToDatabase() {
-  if (!client) {
-    client = new MongoClient(uri, {
-      serverApi: {
-        version: ServerApiVersion.v1,
-        strict: true,
-        deprecationErrors: true,
+// Create a MongoClient with a MongoClientOptions object to set the Stable API version
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  }
+});
+
+async function run() {
+  try {
+    // Connect the client to the server	(optional starting in v4.7)
+    // await client.connect();
+
+    // Database and Collection
+    const coffeeCollection = client.db('coffeeDB').collection('coffee');
+    const userCollection = client.db('coffeeDB').collection('users');
+
+    //GET All Coffees
+    app.get('/coffee',async(req,res)=>{
+      const cursor = coffeeCollection.find();
+      const result= await cursor.toArray();
+      res.send(result)
+    })
+
+
+    //POST all coffees
+   app.post('/coffee',async (req,res)=>{
+    const newCoffee = req.body;
+    console.log(newCoffee);
+    const result = await coffeeCollection.insertOne(newCoffee);
+    res.send(result)
+   })
+
+   //GET A Single Coffee
+   app.get('/coffee/:id',async (req,res)=>{
+    const id = req.params.id;
+    const query = {_id: new ObjectId(id)};
+    const result = await coffeeCollection.findOne(query);
+    res.send(result)
+   })
+
+   //UPDATE Coffee
+   app.put('/coffee/:id',async(req,res)=>{
+    const id = req.params.id;
+    const filter = {_id: new ObjectId(id)};
+    const options = {upsert: true};
+    const updatedCoffee = req.body;
+    const coffee = {
+      $set:{
+        name:updatedCoffee.name,
+        quantiy:updatedCoffee.quantity,
+        supplier:updatedCoffee.supplier,
+        taste:updatedCoffee.taste,
+        category:updatedCoffee.category,
+        details:updatedCoffee.details,
+        photo:updatedCoffee.photo
       }
-    });
+    }
+    const result = await coffeeCollection.updateOne(filter,coffee,options);
+    res.send(result)
+   })
 
-    await client.connect();
-    console.log("Connected to MongoDB");
 
-    // Set collections
-    const db = client.db('coffeeDB');
-    coffeeCollection = db.collection('coffee');
-    userCollection = db.collection('users');
+   //DELETE Coffee
+   app.delete('/coffee/:id',async (req,res)=>{
+    const id = req.params.id;
+    const query = {_id: new ObjectId(id)}
+    const result = await coffeeCollection.deleteOne(query);
+    res.send(result)
+   })
+
+   //Users API
+
+   //POST API
+   app.post ('/users',async(req,res)=>{
+    const newUser = req.body;
+    console.log(newUser);
+    const result = await userCollection.insertOne(newUser);
+    res.send(result)
+   })
+
+   //GET API
+   app.get('/users',async(req,res)=>{
+    const cursor = userCollection.find();
+    const result = await cursor.toArray();
+    res.send(result);
+   })
+   //DELETE API
+   app.delete('/users/:id',async(req,res)=>{
+    const id = req.params.id;
+    const query = {_id: new ObjectId(id)};
+    const result = await userCollection.deleteOne(query);
+    res.send(result)
+   })
+   //GET A Single Coffee
+   app.get('/users/:id',async(req,res)=>{
+    const id = req.params.id;
+    const query = {_id:new ObjectId(id)};
+    const result = await userCollection.findOne(query)
+    res.send(result)
+   })
+
+   //Update Coffee
+
+   app.put('/users/:id',async(req,res)=>{
+    const id = req.params.id;
+    const filter = {_id: new ObjectId(id)};
+    const options = {upsert: true};
+    const updatedUser = req.body;
+    const newUpdatedUser = {
+      $set: {
+        name:updatedUser.name,
+        email:updatedUser.email,
+      }
+    }
+    const result = await userCollection.updateOne(filter,newUpdatedUser,options);
+    res.send(result)
+   })
+
+    // Send a ping to confirm a successful connection
+    await client.db("admin").command({ ping: 1 });
+    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+  } finally {
+    // Ensures that the client will close when you finish/error
+    // await client.close();
   }
 }
+run().catch(console.dir);
 
-connectToDatabase().catch(console.dir);
-
-// API Endpoints
-app.get('/coffee', async (req, res) => {
-  try {
-    const result = await coffeeCollection.find().toArray();
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ error: "Failed to fetch coffee data" });
-  }
-});
-
-app.post('/coffee', async (req, res) => {
-  try {
-    const newCoffee = req.body;
-    const result = await coffeeCollection.insertOne(newCoffee);
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ error: "Failed to add coffee" });
-  }
-});
-
-app.get('/coffee/:id', async (req, res) => {
-  try {
-    const id = req.params.id;
-    const result = await coffeeCollection.findOne({ _id: new ObjectId(id) });
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ error: "Failed to fetch coffee" });
-  }
-});
-
-app.put('/coffee/:id', async (req, res) => {
-  try {
-    const id = req.params.id;
-    const updatedCoffee = req.body;
-    const filter = { _id: new ObjectId(id) };
-    const updateDoc = { $set: updatedCoffee };
-    const result = await coffeeCollection.updateOne(filter, updateDoc);
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ error: "Failed to update coffee" });
-  }
-});
-
-app.delete('/coffee/:id', async (req, res) => {
-  try {
-    const id = req.params.id;
-    const result = await coffeeCollection.deleteOne({ _id: new ObjectId(id) });
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ error: "Failed to delete coffee" });
-  }
-});
-
-// Users API
-app.post('/users', async (req, res) => {
-  try {
-    const newUser = req.body;
-    const result = await userCollection.insertOne(newUser);
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ error: "Failed to add user" });
-  }
-});
-
-app.get('/users', async (req, res) => {
-  try {
-    const result = await userCollection.find().toArray();
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ error: "Failed to fetch users" });
-  }
-});
-
-app.get('/users/:id', async (req, res) => {
-  try {
-    const id = req.params.id;
-    const result = await userCollection.findOne({ _id: new ObjectId(id) });
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ error: "Failed to fetch user" });
-  }
-});
-
-app.put('/users/:id', async (req, res) => {
-  try {
-    const id = req.params.id;
-    const updatedUser = req.body;
-    const filter = { _id: new ObjectId(id) };
-    const updateDoc = { $set: updatedUser };
-    const result = await userCollection.updateOne(filter, updateDoc);
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ error: "Failed to update user" });
-  }
-});
-
-app.delete('/users/:id', async (req, res) => {
-  try {
-    const id = req.params.id;
-    const result = await userCollection.deleteOne({ _id: new ObjectId(id) });
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ error: "Failed to delete user" });
-  }
-});
 
 // Test Route
 app.get('/', (req, res) => {
-  res.send('Hello from Express Server!');
+    res.send('Hello from Express Server!');
 });
 
-// Start server
+// Server Start
 app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
+    console.log(`Server running on http://localhost:${port}`);
 });
